@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>sentry_bringup</name>
+  <version>0.0.1</version>
+  <description>Launch files for sentry robot system</description>
+
+  <maintainer email="you@example.com">CHEN XIN</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <exec_depend>sentry_vision</exec_depend>
+  <exec_depend>sentry_interfaces</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

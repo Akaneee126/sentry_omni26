@@ -4,7 +4,7 @@
   <version>0.0.1</version>
   <description>Custom interfaces for sentry perception system</description>
 
-  <maintainer email="you@example.com">your_name</maintainer>
+  <maintainer email="you@example.com">CHEN XIN</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
