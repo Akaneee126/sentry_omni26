@@ -34,7 +34,7 @@ private:
     CoordinateTransformer transformer_;
     double duplicate_distance_thresh_;
 
-    uint8_t next_id_ = 0;
+    uint16_t next_id_ = 0;
 };
 
 }  // namespace sentry_vision

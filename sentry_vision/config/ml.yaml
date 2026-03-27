@@ -11,4 +11,12 @@ yolov8_model_path: assets/yolov8.xml
 yolov5_model_path: assets/yolov5.xml
 device: GPU
 min_confidence: 0.8
+nms_threshold: 0.45
+input_width: 640
+input_height: 640
 use_traditional: true
+
+#融合参数
+sync_timeout: 0.08
+duplicate_distance_thresh: 0.4
+publish_rate: 30.0

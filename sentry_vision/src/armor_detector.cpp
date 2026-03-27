@@ -26,23 +26,16 @@ ArmorDetector::ArmorDetector(const ParamManager & params)
 // ============================================================
 void ArmorDetector::loadModel(const std::string & model_path)
 {
-    // --- 方案 A：用 OpenCV DNN 加载 ONNX ---
-    //  net_ = cv::dnn::readNetFromONNX(model_path);
-
-    // --- 方案 B：用 OpenCV DNN 加载 OpenVINO IR（.xml + .bin）---
-     net_ = cv::dnn::readNet(model_path);          // .xml 路径
-     net_.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
-     net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);  // 或 DNN_TARGET_OPENCL
-
-    // --- 方案 C：直接调 OpenVINO C++ API ---
-    // 如果你要用 TensorRT / OpenVINO 原生 API，这里替换成对应的加载代码。
-    // 参考 OpenVINO：ov::Core core; auto model = core.read_model(xml); ...
-
-    // TODO: 选一种方案取消注释并补全
-    // 加载成功后设置标志
-    // model_loaded_ = true;
-
-    std::cout << "[ArmorDetector] loadModel: " << model_path << std::endl;
+    try {
+        net_ = cv::dnn::readNet(model_path);
+        net_.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
+        net_.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
+        model_loaded_ = true;
+        std::cout << "[ArmorDetector] Model loaded: " << model_path << std::endl;
+    } catch (const cv::Exception & e) {
+        std::cerr << "[ArmorDetector] Failed to load model: " << e.what() << std::endl;
+        model_loaded_ = false;
+    }
 }
 
 // ============================================================
@@ -56,27 +49,23 @@ bool ArmorDetector::infer(const cv::Mat & image, int camera_id,
     if (image.empty()) {
         return false;
     }
-    // if (!model_loaded_) { return false; }
+    if (!model_loaded_) {
+        return false;
+    }
 
     // 1. 前处理：图像 -> blob
     cv::Mat blob;
     preprocess(image, blob);
 
     // 2. 推理
-    // net_.setInput(blob);
-    // cv::Mat output = net_.forward();
-    // 如果你的网络有多个输出头，用 net_.forward(output_names) 获取
+    net_.setInput(blob);
+    cv::Mat output = net_.forward();
 
     // 3. 后处理：网络输出 -> DetectionBox 列表
-    // postprocess(output, image.size(), detections);
+    postprocess(output, image.size(), detections);
 
     // 4. NMS 去重
-    // nms(detections);
-
-    // ---------- 临时：先返回空结果让节点能跑通 ----------
-    std::cout << "[ArmorDetector] infer cam=" << camera_id
-              << "  img=" << image.cols << "x" << image.rows
-              << std::endl;
+    nms(detections);
 
     return true;
 }
@@ -118,19 +107,9 @@ void ArmorDetector::postprocess(const cv::Mat & output,
                                 const cv::Size & img_size,
                                 std::vector<DetectionBox> & detections)
 {
-    // ----- 这里的解析逻辑取决于你用的 YOLO 版本 -----
-    //
-    // YOLOv5 输出格式 (batch=1)：
+    // YOLOv5 输出格式 (batch=1):
     //   shape = [1, num_detections, 5 + num_classes]
     //   每行 = [cx, cy, w, h, obj_conf, class0_conf, class1_conf, ...]
-    //
-    // YOLOv8/v11 输出格式 (batch=1)：
-    //   shape = [1, 4 + num_classes, num_detections]  (需要转置)
-    //   每列 = [cx, cy, w, h, class0_conf, class1_conf, ...]
-    //   没有单独的 obj_conf
-    //
-    // TODO: 根据你使用的模型版本，选择对应的解析方式
-    //       下面以 YOLOv5 格式为例
 
     // letterbox 还原参数
     float scale = std::min(

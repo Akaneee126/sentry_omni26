@@ -1,5 +1,6 @@
 #include "sentry_vision/param_manager.hpp"
 
+#include <cstring>
 #include <fstream>
 #include <sstream>
 #include <iostream>
