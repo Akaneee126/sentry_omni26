@@ -1,0 +1,25 @@
+# 单相机调试模式 —— 只用 1 台相机跑全向感知
+
+# 相机数量
+camera_count: 1
+
+# 只需要设置第一路（其余不使用）
+img1_topic_name: "/mvsua_cam/image_raw2"
+img2_topic_name: "/mvsua_cam/image_raw3"
+img3_topic_name: "/mvsua_cam/image_raw4"
+
+# 网络参数（和 ml.yaml 一致，可单独调）
+yolo_name: yolov5
+yolov5_model_path: assets/yolov5.xml
+yolov8_model_path: assets/yolov8.xml
+yolo11_model_path: assets/yolo11.xml
+device: GPU
+min_confidence: 0.8
+nms_threshold: 0.45
+input_width: 640
+input_height: 640
+
+# 融合参数
+sync_timeout: 0.08
+duplicate_distance_thresh: 0.4
+publish_rate: 30.0

@@ -64,12 +64,23 @@ add_executable(sentry_vision_node
 target_link_libraries(sentry_vision_node sentry_vision_core)
 ament_target_dependencies(sentry_vision_node ${DEPENDENCIES})
 
+# debug_node (可视化调试)
+add_executable(sentry_debug_node
+  src/node/debug_node.cpp
+)
+target_include_directories(sentry_debug_node PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>
+)
+ament_target_dependencies(sentry_debug_node ${DEPENDENCIES})
+
 # ==================== 安装 ====================
 install(TARGETS
   sentry_vision_core
   armor_detector_node
   target_combine_node
   sentry_vision_node
+  sentry_debug_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

@@ -25,16 +25,25 @@ void ParamManager::declareAndReadParams()
 {
     auto & n = *node_;
 
+    // -------- 相机数量 --------
+    n.declare_parameter<int>("camera_count", 3);
+    int camera_count = n.get_parameter("camera_count").as_int();
+    if (camera_count < 1) camera_count = 1;
+    if (camera_count > 3) camera_count = 3;
+
     // -------- 相机话题（来自 ml.yaml）--------
     n.declare_parameter<std::string>("img1_topic_name", "/mvsua_cam/image_raw2");
     n.declare_parameter<std::string>("img2_topic_name", "/mvsua_cam/image_raw3");
     n.declare_parameter<std::string>("img3_topic_name", "/mvsua_cam/image_raw4");
 
-    camera_topics_.push_back(n.get_parameter("img1_topic_name").as_string());
-    camera_topics_.push_back(n.get_parameter("img2_topic_name").as_string());
-    camera_topics_.push_back(n.get_parameter("img3_topic_name").as_string());
+    const std::vector<std::string> all_topic_params = {
+        "img1_topic_name", "img2_topic_name", "img3_topic_name"
+    };
+    for (int i = 0; i < camera_count; ++i) {
+        camera_topics_.push_back(n.get_parameter(all_topic_params[i]).as_string());
+    }
 
-    RCLCPP_INFO(n.get_logger(), "Loaded %zu camera topics", camera_topics_.size());
+    RCLCPP_INFO(n.get_logger(), "Camera mode: %d/%d cameras", camera_count, 3);
     for (size_t i = 0; i < camera_topics_.size(); ++i) {
         RCLCPP_INFO(n.get_logger(), "  cam%zu: %s", i, camera_topics_[i].c_str());
     }
