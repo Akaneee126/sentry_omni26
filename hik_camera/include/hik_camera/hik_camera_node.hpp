@@ -3,7 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <atomic>
@@ -22,10 +22,42 @@ struct CameraInstance
     void * handle = nullptr;
     int device_index = -1;
     std::string topic_name;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr publisher;       // 原图
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr small_publisher; // 640x640 小图
     std::thread capture_thread;
     std::atomic<bool> running{false};
     std::string frame_id;
+
+    CameraInstance() = default;
+    CameraInstance(CameraInstance && other) noexcept
+    : handle(other.handle),
+      device_index(other.device_index),
+      topic_name(std::move(other.topic_name)),
+      publisher(std::move(other.publisher)),
+      small_publisher(std::move(other.small_publisher)),
+      capture_thread(std::move(other.capture_thread)),
+      running(other.running.load()),
+      frame_id(std::move(other.frame_id))
+    {
+        other.handle = nullptr;
+    }
+    CameraInstance & operator=(CameraInstance && other) noexcept
+    {
+        if (this != &other) {
+            handle = other.handle;
+            device_index = other.device_index;
+            topic_name = std::move(other.topic_name);
+            publisher = std::move(other.publisher);
+            small_publisher = std::move(other.small_publisher);
+            capture_thread = std::move(other.capture_thread);
+            running.store(other.running.load());
+            frame_id = std::move(other.frame_id);
+            other.handle = nullptr;
+        }
+        return *this;
+    }
+    CameraInstance(const CameraInstance &) = delete;
+    CameraInstance & operator=(const CameraInstance &) = delete;
 };
 
 class HikCameraNode : public rclcpp::Node

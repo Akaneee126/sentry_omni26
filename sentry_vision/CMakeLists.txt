@@ -16,6 +16,24 @@ find_package(cv_bridge REQUIRED)
 find_package(image_transport REQUIRED)
 find_package(sentry_interfaces REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(OpenVINO REQUIRED COMPONENTS Runtime)
+
+# ==================== 海康 MVS SDK ====================
+set(HIK_LOCAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../hikrobot")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64")
+  set(HIK_LIB_SEARCH_PATHS "${HIK_LOCAL_DIR}/lib/arm64" "/opt/MVS/lib/64")
+else()
+  set(HIK_LIB_SEARCH_PATHS "${HIK_LOCAL_DIR}/lib/amd64" "/opt/MVS/lib/64")
+endif()
+find_library(MVS_LIB MvCameraControl PATHS ${HIK_LIB_SEARCH_PATHS})
+find_path(HIK_INCLUDE_DIR MvCameraControl.h PATHS "${HIK_LOCAL_DIR}/include" "/opt/MVS/include")
+if(MVS_LIB AND HIK_INCLUDE_DIR)
+  message(STATUS "Found HIK SDK: ${MVS_LIB}")
+  set(HAS_HIK_SDK TRUE)
+else()
+  message(WARNING "HIK SDK not found, armor_detector_node will use ROS topic fallback only")
+  set(HAS_HIK_SDK FALSE)
+endif()
 
 set(DEPENDENCIES
   rclcpp
@@ -40,6 +58,7 @@ target_include_directories(sentry_vision_core PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 ament_target_dependencies(sentry_vision_core ${DEPENDENCIES})
+target_link_libraries(sentry_vision_core openvino::runtime)
 
 # ==================== 节点可执行文件 ====================
 
@@ -49,6 +68,11 @@ add_executable(armor_detector_node
 )
 target_link_libraries(armor_detector_node sentry_vision_core)
 ament_target_dependencies(armor_detector_node ${DEPENDENCIES})
+if(HAS_HIK_SDK)
+  target_include_directories(armor_detector_node PRIVATE ${HIK_INCLUDE_DIR})
+  target_link_libraries(armor_detector_node ${MVS_LIB})
+  target_compile_definitions(armor_detector_node PRIVATE HAS_HIK_SDK)
+endif()
 
 # target_combine_node
 add_executable(target_combine_node

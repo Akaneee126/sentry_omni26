@@ -1,0 +1,10 @@
+std_msgs/Header header
+uint8 camera_id
+uint8 target_color
+uint8 target_number
+float32 confidence
+float32 x
+float32 y
+float32 width
+float32 height
+float32 distance

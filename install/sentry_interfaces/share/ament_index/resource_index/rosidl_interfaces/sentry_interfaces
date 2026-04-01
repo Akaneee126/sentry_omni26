@@ -1,0 +1,8 @@
+msg/ArmorDetection.idl
+msg/ArmorDetection.msg
+msg/ArmorDetectionArray.idl
+msg/ArmorDetectionArray.msg
+msg/EnemyTarget.idl
+msg/EnemyTarget.msg
+msg/EnemyTargetArray.idl
+msg/EnemyTargetArray.msg

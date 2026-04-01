@@ -1,0 +1,11 @@
+source;share/sentry_vision/hook/cmake_prefix_path.ps1
+source;share/sentry_vision/hook/cmake_prefix_path.dsv
+source;share/sentry_vision/hook/cmake_prefix_path.sh
+source;share/sentry_vision/hook/ld_library_path_lib.ps1
+source;share/sentry_vision/hook/ld_library_path_lib.dsv
+source;share/sentry_vision/hook/ld_library_path_lib.sh
+source;share/sentry_vision/local_setup.bash
+source;share/sentry_vision/local_setup.dsv
+source;share/sentry_vision/local_setup.ps1
+source;share/sentry_vision/local_setup.sh
+source;share/sentry_vision/local_setup.zsh

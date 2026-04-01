@@ -64,6 +64,11 @@ void ParamManager::declareAndReadParams()
     n.declare_parameter<double>("nms_threshold", 0.45);
     n.declare_parameter<int>("input_width", 640);
     n.declare_parameter<int>("input_height", 640);
+    n.declare_parameter<int>("num_classes", 13);
+    n.declare_parameter<int>("num_keypoints", 4);
+    n.declare_parameter<int>("kpt_channels", 2);
+    n.declare_parameter<bool>("has_objectness", true);
+    n.declare_parameter<bool>("apply_sigmoid", true);
 
     yolo_name_      = n.get_parameter("yolo_name").as_string();
     device_         = n.get_parameter("device").as_string();
@@ -71,11 +76,31 @@ void ParamManager::declareAndReadParams()
     nms_threshold_  = static_cast<float>(n.get_parameter("nms_threshold").as_double());
     input_width_    = n.get_parameter("input_width").as_int();
     input_height_   = n.get_parameter("input_height").as_int();
+    num_classes_    = n.get_parameter("num_classes").as_int();
+    num_keypoints_  = n.get_parameter("num_keypoints").as_int();
+    kpt_channels_   = n.get_parameter("kpt_channels").as_int();
+    has_objectness_ = n.get_parameter("has_objectness").as_bool();
+    apply_sigmoid_  = n.get_parameter("apply_sigmoid").as_bool();
 
     resolveModelPath();
-    RCLCPP_INFO(n.get_logger(), "Model: %s (%s) on %s, conf=%.2f, nms=%.2f",
-                yolo_name_.c_str(), model_path_.c_str(), device_.c_str(),
-                conf_threshold_, nms_threshold_);
+
+    // 校验（仅提示用，实际校验在 ArmorDetector 中做）
+    int expected_features;
+    if (yolo_name_ == "yolov5") {
+        // kpt-first: 4*2 + 1 + 4(color) + 9(number) = 22
+        expected_features = num_keypoints_ * 2 + 1 + 4 + 9;
+    } else {
+        expected_features = (has_objectness_ ? 5 : 4) + num_keypoints_ * kpt_channels_ + num_classes_;
+    }
+    RCLCPP_INFO(n.get_logger(),
+        "Model: %s (%s) on %s, conf=%.2f, nms=%.2f, "
+        "classes=%d, keypoints=%d, kpt_ch=%d, has_obj=%s, sigmoid=%s, expected_features=%d",
+        yolo_name_.c_str(), model_path_.c_str(), device_.c_str(),
+        conf_threshold_, nms_threshold_,
+        num_classes_, num_keypoints_, kpt_channels_,
+        has_objectness_ ? "true" : "false",
+        apply_sigmoid_ ? "true" : "false",
+        expected_features);
 
     // -------- 融合参数 --------
     n.declare_parameter<double>("sync_timeout", 0.08);

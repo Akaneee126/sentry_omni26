@@ -1,7 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import TimerAction
+from launch.actions import TimerAction, SetEnvironmentVariable
 from launch_ros.actions import Node
 
 
@@ -20,27 +20,11 @@ def generate_launch_description():
         {'intrinsic_path': os.path.join(config_dir, 'Intrinsic.yaml')},
     ]
 
-    # ========== 1. 海康相机驱动（只开 1 路）==========
-    try:
-        hik_dir = get_package_share_directory('hik_camera')
-        hik_config = os.path.join(hik_dir, 'config', 'hik_camera.yaml')
-        hik_camera_node = Node(
-            package='hik_camera',
-            executable='hik_camera_node',
-            name='hik_camera_node',
-            output='screen',
-            parameters=[
-                hik_config,
-                {
-                    'camera_topics': ['/mvsua_cam/image_raw2'],  # 只发布 1 路
-                },
-            ],
-        )
-    except Exception:
-        # 如果没装 hik_camera 包，跳过（用户可能手动发图像 topic）
-        hik_camera_node = None
+    # ========== 1. 海康相机驱动（不再需要，detector 直接开相机）==========
+    # 如果 detector 的 HIK SDK 初始化失败, 它会自动回退到 ROS topic 订阅
+    # 那时可以手动启动 hik_camera_node
 
-    # ========== 2. 装甲板检测节点（单相机）==========
+    # ========== 2. 装甲板检测节点（单相机，直接通过 SDK 取图）==========
     armor_detector_node = Node(
         package='sentry_vision',
         executable='armor_detector_node',
@@ -79,18 +63,17 @@ def generate_launch_description():
     # ========== 组装 ==========
     actions = []
 
-    if hik_camera_node is not None:
-        actions.append(hik_camera_node)
+    # 设置海康 MVS SDK 环境变量
+    actions.append(SetEnvironmentVariable('MVCAM_COMMON_RUNENV', '/opt/MVS/lib/64'))
+    actions.append(SetEnvironmentVariable('MVCAM_SDK_PATH', '/opt/MVS'))
 
-    # 延迟 2 秒启动感知，等相机就绪
+    # 直接启动 detector（内部自己开相机，无需等待）
+    actions.append(armor_detector_node)
+    actions.append(target_combine_node)
+
+    # 延迟 2 秒启动调试可视化（等 detector 先发布图像 topic）
     actions.append(TimerAction(
         period=2.0,
-        actions=[armor_detector_node, target_combine_node],
-    ))
-
-    # 延迟 3 秒启动调试可视化
-    actions.append(TimerAction(
-        period=3.0,
         actions=[debug_node],
     ))
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
+#include <openvino/openvino.hpp>
 
 #include "sentry_vision/types.hpp"
 
@@ -33,20 +34,27 @@ private:
     void preprocess(const cv::Mat & src, cv::Mat & blob);
 
     // ---------- 后处理 ----------
-    /// 解析网络输出 -> 原始框
-    void postprocess(const cv::Mat & output, const cv::Size & img_size,
-                     std::vector<DetectionBox> & detections);
+    /// YOLOv5 后处理 (kpt-first 布局)
+    void postprocess_yolov5(const float * data, int num_boxes, int stride,
+                            const cv::Size & img_size,
+                            std::vector<DetectionBox> & detections);
+
+    /// YOLOv8/11 后处理 (cx,cy,w,h-first 布局)
+    void postprocess_yolov8(const float * data, int num_boxes, int stride,
+                            int num_classes, int num_keypoints, int kpt_channels,
+                            bool has_objectness, bool apply_sigmoid,
+                            const cv::Size & img_size,
+                            std::vector<DetectionBox> & detections);
 
     /// NMS
     void nms(std::vector<DetectionBox> & detections);
 
-    // ---------- 工具 ----------
-    /// 把 YOLO class_id 拆成 color + number
-    static void decodeClassId(int class_id, uint8_t & color, uint8_t & number);
-
 private:
-    // 模型
-    cv::dnn::Net net_;
+    // OpenVINO
+    ov::Core core_;
+    ov::CompiledModel compiled_model_;
+    ov::InferRequest infer_request_;
+
     int input_w_ = 640;
     int input_h_ = 640;
 
@@ -54,8 +62,21 @@ private:
     float conf_threshold_ = 0.8f;
     float nms_threshold_  = 0.45f;
 
-    // 类别数（RM 装甲板一般 2色 × 8号 = 16 类，按你的训练集改）
-    int num_classes_ = 16;
+    // 设备 (CPU / GPU)
+    std::string device_ = "GPU";
+
+    // YOLO 变体名称 (yolov5 / yolov8 / yolo11)
+    std::string yolo_name_ = "yolov5";
+    // 后处理格式（从yaml配置读取）
+    int num_classes_ = 13;
+    int num_keypoints_ = 4;   // 装甲板4角点
+    int kpt_channels_ = 2;   // 2=(x,y)
+    bool has_objectness_ = true; // YOLOv5=true, v8/v11=false
+    bool apply_sigmoid_ = true;  // 输出是 raw logit 时需 sigmoid
+
+    // YOLOv5 专用参数
+    static constexpr int kNumColorClasses = 4;   // 蓝/红/灰/紫
+    static constexpr int kNumNumberClasses = 9;  // 编号类别数
 
     // 是否已加载
     bool model_loaded_ = false;

@@ -1,22 +1,33 @@
 #节点名称
-img1_topic_name: "/mvsua_cam/image_raw2"
-img2_topic_name: "/mvsua_cam/image_raw3"
-img3_topic_name: "/mvsua_cam/image_raw4"
+/**:
+  ros__parameters:
+    img1_topic_name: "/mvsua_cam/image_raw2"
+    img2_topic_name: "/mvsua_cam/image_raw3"
+    img3_topic_name: "/mvsua_cam/image_raw4"
 
-#网络参数
-yolo_name: yolov5
-classify_model: assets/tiny_resnet.onnx
-yolo11_model_path: assets/yolo11.xml
-yolov8_model_path: assets/yolov8.xml
-yolov5_model_path: assets/yolov5.xml
-device: GPU
-min_confidence: 0.8
-nms_threshold: 0.45
-input_width: 640
-input_height: 640
-use_traditional: true
+    #网络参数
+    yolo_name: yolov5
+    classify_model: assets/tiny_resnet.onnx
+    yolo11_model_path: assets/yolo11.xml
+    yolov8_model_path: assets/yolov8.xml
+    yolov5_model_path: assets/yolov5.xml
+    device: GPU
+    min_confidence: 0.8
+    nms_threshold: 0.45
+    input_width: 640
+    input_height: 640
+    use_traditional: true
 
-#融合参数
-sync_timeout: 0.08
-duplicate_distance_thresh: 0.4
-publish_rate: 30.0
+    # ====== 后处理格式（YOLOv5 kpt-first 布局）======
+    # YOLOv5 输出: [1, 25200, 22]
+    # [kp_xy(8), obj(1), color(4), number(9)] = 22
+    num_classes: 13
+    num_keypoints: 4
+    kpt_channels: 2
+    has_objectness: true
+    apply_sigmoid: true
+
+    #融合参数
+    sync_timeout: 0.08
+    duplicate_distance_thresh: 0.4
+    publish_rate: 30.0

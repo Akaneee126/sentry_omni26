@@ -21,6 +21,10 @@ public:
     TargetCombineNode()
     : Node("target_combine_node")
     {
+    }
+
+    void init()
+    {
         param_manager_ = std::make_shared<ParamManager>(shared_from_this());
         buffer_ = std::make_unique<MultiCameraBuffer>(*param_manager_);
         combine_ = std::make_unique<TargetCombine>(*param_manager_);
@@ -91,6 +95,7 @@ int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<sentry_vision::TargetCombineNode>();
+    node->init();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

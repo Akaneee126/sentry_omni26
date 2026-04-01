@@ -1,7 +1,7 @@
 // sentry_vision_node.cpp —— 一体化节点：检测 + 融合 + 发布
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <chrono>
 #include <memory>
 #include <vector>
@@ -24,6 +24,10 @@ class SentryVisionNode : public rclcpp::Node
 public:
     SentryVisionNode()
     : Node("sentry_vision_node")
+    {
+    }
+
+    void init()
     {
         param_manager_ = std::make_shared<ParamManager>(shared_from_this());
         detector_ = std::make_unique<ArmorDetector>(*param_manager_);
@@ -116,6 +120,7 @@ int main(int argc, char ** argv)
 {
     rclcpp::init(argc, argv);
     auto node = std::make_shared<sentry_vision::SentryVisionNode>();
+    node->init();
     rclcpp::spin(node);
     rclcpp::shutdown();
     return 0;

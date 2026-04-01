@@ -3,7 +3,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
-#include <cv_bridge/cv_bridge.h>
+#include <cv_bridge/cv_bridge.hpp>
 #include <opencv2/opencv.hpp>
 
 #include <deque>
@@ -56,6 +56,8 @@ private:
     bool show_windows_;    // 是否 imshow（无头机可关闭，只发 topic）
     double bev_range_;     // BEV 显示范围 (米)
     int bev_size_;         // BEV 画布像素
+    int source_width_;     // 检测坐标对应的原图宽度
+    int source_height_;    // 检测坐标对应的原图高度
 
     // ---------- 订阅 / 发布 ----------
     std::vector<rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr> img_subs_;

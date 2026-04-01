@@ -16,9 +16,10 @@ struct DetectionBox
     float width;       // bbox 宽（像素）
     float height;      // bbox 高（像素）
     float confidence;  // 置信度
-    uint8_t color;     // 装甲板颜色  0=红 1=蓝
-    uint8_t number;    // 装甲板数字  1~5, 前哨站=6, 基地=7
-    int class_id;      // YOLO 原始类别 id
+    uint8_t color;     // 装甲板颜色  0=蓝 1=红 2=灰 3=紫
+    uint8_t number;    // 装甲板数字  1~8
+    int class_id;      // YOLO 原始编号类别 id
+    std::vector<cv::Point2f> keypoints;  // 4 个装甲板角点
 };
 
 // 融合后的目标状态（后端输出）

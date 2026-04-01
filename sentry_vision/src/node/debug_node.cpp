@@ -39,6 +39,8 @@ DebugNode::DebugNode()
     declare_parameter<bool>("show_windows", true);
     declare_parameter<double>("bev_range", 10.0);
     declare_parameter<int>("bev_size", 600);
+    declare_parameter<int>("image_width", 1440);
+    declare_parameter<int>("image_height", 1080);
     declare_parameter<std::vector<std::string>>("camera_topics", {
         "/mvsua_cam/image_raw2",
         "/mvsua_cam/image_raw3",
@@ -48,13 +50,16 @@ DebugNode::DebugNode()
     show_windows_ = get_parameter("show_windows").as_bool();
     bev_range_ = get_parameter("bev_range").as_double();
     bev_size_ = get_parameter("bev_size").as_int();
+    source_width_ = get_parameter("image_width").as_int();
+    source_height_ = get_parameter("image_height").as_int();
     topic_names_ = get_parameter("camera_topics").as_string_array();
 
-    // ---------- 订阅相机图像 ----------
+    // ---------- 订阅相机图像（QoS 匹配相机发布端的 SensorDataQoS）----------
+    auto img_qos = rclcpp::SensorDataQoS().keep_last(1);
     for (size_t i = 0; i < topic_names_.size(); ++i) {
         int cam_id = static_cast<int>(i);
         auto sub = create_subscription<sensor_msgs::msg::Image>(
-            topic_names_[i], 10,
+            topic_names_[i], img_qos,
             [this, cam_id](const sensor_msgs::msg::Image::SharedPtr msg) {
                 imageCallback(msg, cam_id);
             });
@@ -82,9 +87,9 @@ DebugNode::DebugNode()
     bev_pub_ = create_publisher<sensor_msgs::msg::Image>("/debug/bev", 5);
     panel_pub_ = create_publisher<sensor_msgs::msg::Image>("/debug/param_panel", 5);
 
-    // ---------- 定时刷新 (10 Hz) ----------
+    // ---------- 定时刷新 (30 Hz) ----------
     timer_ = create_wall_timer(
-        std::chrono::milliseconds(100),
+        std::chrono::milliseconds(33),
         std::bind(&DebugNode::timerCallback, this));
 
     RCLCPP_INFO(get_logger(), "=== SentryDebugNode started ===");
@@ -199,11 +204,20 @@ void DebugNode::drawDetections(cv::Mat & img, int cam_id)
     auto it = latest_dets_.find(cam_id);
     if (it == latest_dets_.end()) return;
 
+    // 检测坐标基于原图 (source_width_ x source_height_)，
+    // 实际图像可能已被 resize，需要缩放映射
+    float sx = static_cast<float>(img.cols) / static_cast<float>(source_width_);
+    float sy = static_cast<float>(img.rows) / static_cast<float>(source_height_);
+
     for (const auto & det : it->second) {
         cv::Scalar color = colorForId(det.target_color);
-        float half_w = det.width / 2.0f;
-        float half_h = det.height / 2.0f;
-        cv::Rect2f box(det.x - half_w, det.y - half_h, det.width, det.height);
+        float cx = det.x * sx;
+        float cy = det.y * sy;
+        float w  = det.width * sx;
+        float h  = det.height * sy;
+        float half_w = w / 2.0f;
+        float half_h = h / 2.0f;
+        cv::Rect2f box(cx - half_w, cy - half_h, w, h);
 
         // 检测框
         cv::rectangle(img, box, color, 2);
@@ -505,8 +519,8 @@ double DebugNode::computeFps(CameraStats & stats)
 
 cv::Scalar DebugNode::colorForId(uint8_t color)
 {
-    // 0=红方, 1=蓝方
-    return (color == 0) ? COLOR_RED : COLOR_BLUE;
+    // 模型输出: 0=蓝, 1=红, 2=灰, 3=紫
+    return (color == 1) ? COLOR_RED : COLOR_BLUE;
 }
 
 std::string DebugNode::numberLabel(uint8_t number)

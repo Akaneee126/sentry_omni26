@@ -4,6 +4,7 @@
 #include "hik_camera/hik_camera_node.hpp"
 
 #include <chrono>
+#include <cstdlib>
 #include <functional>
 #include <unordered_map>
 
@@ -19,6 +20,17 @@ HikCameraNode::HikCameraNode()
 : Node("hik_camera_node")
 {
     declareParams();
+
+    // ---------- 确保 SDK 能找到传输层库 ----------
+    setenv("MVCAM_COMMON_RUNENV", "/opt/MVS/lib/64", 1);
+    setenv("MVCAM_SDK_PATH",      "/opt/MVS",        1);
+
+    // ---------- 初始化 SDK ----------
+    unsigned int init_ret = MV_CC_Initialize();
+    if (init_ret != MV_OK) {
+        RCLCPP_FATAL(get_logger(), "MV_CC_Initialize failed: 0x%x", init_ret);
+        return;
+    }
 
     // ---------- 枚举设备 ----------
     MV_CC_DEVICE_INFO_LIST device_list;
@@ -48,8 +60,14 @@ HikCameraNode::HikCameraNode()
         cam.topic_name = topic_names_[i];
         cam.frame_id = "cam" + std::to_string(i);
 
-        // 创建 publisher
-        cam.publisher = create_publisher<sensor_msgs::msg::Image>(cam.topic_name, 10);
+        // SensorDataQoS: best-effort + depth=1, 让订阅端只处理最新帧
+        cam.publisher = create_publisher<sensor_msgs::msg::Image>(
+            cam.topic_name, rclcpp::SensorDataQoS().keep_last(1));
+
+        // 发布 640x640 小图，给推理节点用（体积仅 1.2MB vs 原图 4.6MB）
+        std::string small_topic = cam.topic_name + "/small";
+        cam.small_publisher = create_publisher<sensor_msgs::msg::Image>(
+            small_topic, rclcpp::SensorDataQoS().keep_last(1));
 
         // 打开相机
         if (!openCamera(cam, device_list.pDeviceInfo[i])) {
@@ -70,6 +88,7 @@ HikCameraNode::HikCameraNode()
 HikCameraNode::~HikCameraNode()
 {
     stopAll();
+    MV_CC_Finalize();
     RCLCPP_INFO(get_logger(), "HikCameraNode destroyed");
 }
 
@@ -136,7 +155,8 @@ bool HikCameraNode::openCamera(CameraInstance & cam, MV_CC_DEVICE_INFO * device_
     // 手动增益
     MV_CC_SetEnumValue(cam.handle, "GainAuto", MV_GAIN_MODE_OFF);
     MV_CC_SetFloatValue(cam.handle, "Gain", static_cast<float>(gain_));
-    // 帧率
+    // 帧率：先启用帧率控制，再设值
+    MV_CC_SetBoolValue(cam.handle, "AcquisitionFrameRateEnable", true);
     MV_CC_SetFrameRate(cam.handle, static_cast<float>(frame_rate_));
 
     // 开始采集
@@ -201,13 +221,28 @@ void HikCameraNode::captureLoop(int cam_index)
             cv::cvtColor(bayer, bgr, cv::COLOR_BayerRG2BGR);
         }
 
-        // 发布 ROS2 Image 消息
+        // 发布 ROS2 Image 消息（原图，供 debug 等下游使用）
         auto msg = cv_bridge::CvImage(
             std_msgs::msg::Header(), "bgr8", bgr).toImageMsg();
         msg->header.stamp = now();
         msg->header.frame_id = cam.frame_id;
 
         cam.publisher->publish(*msg);
+
+        // 发布 640x640 小图给推理节点（等比缩放 + 左上角对齐 + 黑色填充）
+        if (cam.small_publisher->get_subscription_count() > 0) {
+            float scale = std::min(640.0f / bgr.cols, 640.0f / bgr.rows);
+            int nw = static_cast<int>(bgr.cols * scale);
+            int nh = static_cast<int>(bgr.rows * scale);
+            cv::Mat resized;
+            cv::resize(bgr, resized, cv::Size(nw, nh));
+            cv::Mat canvas(640, 640, CV_8UC3, cv::Scalar(0, 0, 0));
+            resized.copyTo(canvas(cv::Rect(0, 0, nw, nh)));
+
+            auto small_msg = cv_bridge::CvImage(
+                msg->header, "bgr8", canvas).toImageMsg();
+            cam.small_publisher->publish(*small_msg);
+        }
 
         // 释放 SDK 缓冲区
         MV_CC_FreeImageBuffer(cam.handle, &raw);
