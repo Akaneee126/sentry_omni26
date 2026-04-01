@@ -29,7 +29,6 @@ ros2 launch sentry_vision debug.launch.py
 ```
 
 ### 依赖
-```
 - ROS2
 - OpenCV
 - OpenVINO Runtime
